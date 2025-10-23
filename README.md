@@ -296,6 +296,23 @@ java -Xmx8G src.Distribuidor.Distribuidor
 ### Problema: Resultados inconsistentes
 **Solução:** Verifique se todos os Receptores estão respondendo corretamente e se a divisão do vetor está correta
 
+## 🔐 Considerações de Segurança
+
+⚠️ **Aviso Importante**: Este projeto foi desenvolvido para fins educacionais e deve ser executado apenas em ambientes controlados e redes confiáveis.
+
+### Desserialização de Objetos
+O sistema utiliza desserialização de objetos Java (`ObjectInputStream.readObject()`) como parte dos requisitos do projeto. Esta abordagem pode representar riscos de segurança em ambientes de produção:
+
+- **Contexto Educacional**: A desserialização é um requisito explícito da atividade para demonstrar comunicação via TCP/IP com serialização de objetos
+- **Ambiente Controlado**: O sistema foi projetado para operar em redes locais confiáveis com máquinas conhecidas
+- **Não usar em produção**: Para sistemas em produção, considere alternativas mais seguras como JSON, Protocol Buffers, ou outras formas de serialização com validação rigorosa
+
+### Recomendações para Uso Seguro
+1. Execute apenas em redes isoladas e confiáveis
+2. Configure firewall para permitir apenas conexões de IPs conhecidos
+3. Não exponha o serviço à Internet
+4. Use apenas para fins educacionais e demonstrações em laboratório
+
 ## 📚 Referências
 
 - Java Network Programming
