@@ -31,3 +31,6 @@ bin/
 ### Test files ###
 MALIGNO/
 *.docx
+
+### Compiled Java ###
+*.class
