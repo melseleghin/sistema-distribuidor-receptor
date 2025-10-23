@@ -1,19 +1,19 @@
 package src.Comunicacao;
 
 public class Pedido extends Comunicado {
-    private final int[] numeros;
-    private final int procurado;
+    private final byte[] numeros;
+    private final byte procurado;
 
-    public Pedido(int[] numeros, int procurado) {
+    public Pedido(byte[] numeros, byte procurado) {
         this.numeros = numeros;
         this.procurado = procurado;
     }
 
-    public int[] getNumeros() {
+    public byte[] getNumeros() {
         return numeros;
     }
 
-    public int getProcurado() {
+    public byte getProcurado() {
         return procurado;
     }
 

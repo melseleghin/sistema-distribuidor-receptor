@@ -2,183 +2,251 @@ package src.Receptor;
 
 import java.io.*;
 import java.net.*;
-import java.util.*; // adicionada para ExecutorService, Future, Callable, Executors
-import java.util.concurrent.*; // adicionada para List e ArrayList
+import java.util.*;
+import java.util.concurrent.*;
 import src.Comunicacao.*;
 
-public class Receptor
-{
+public class Receptor {
 
-    // private -> only this class can access (private, public)
-    // static -> only one instance of the class (no instances)
-    // final -> cannot be changed (constant)
-    // ExecutorService -> pool of threads for CPU-bound tasks
-
-    // ExecutorService is a class that manages a pool of threads
-
-    // Method used at the beginning of the program to create the pool of threads
-    // newFixedThreadPool(n) creates a pool with n threads -> In this case is the number of available processors
     private static final ExecutorService cpuPool =
-        Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
+            Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
-    // newCachedThreadPool() creates a pool with a number of threads created for each connection
-    // Example: 
-        // Conexão 1 → Thread 1 (criada)
-        // Conexão 2 → Thread 2 (criada)
-        // Conexão 3 → Thread 3 (criada)
-        // ...
-        // Conexão 10 → Thread 10 (criada)
-        // Total: 10 threads criadas
+    private static final ExecutorService connectionPool =
+            Executors.newCachedThreadPool();
 
-        // Conexão 5 → ESPERA Thread 1 ficar livre
-        // Conexão 6 → ESPERA Thread 2 ficar livre
-        // ...
-        // Total: 4 threads, 6 conexões na fila
-    private static final ExecutorService connectionPool = 
-        Executors.newCachedThreadPool();
+    public static void main(String[] args) {
+        ServerSocket pedido = null;
+        int porta = 0;
 
-    public static void main (String[] args)
-    {
-        try
-        {
-            ServerSocket pedido =
-                new ServerSocket (12345); // Creates ServerSocket object on port 12345
+        try {
+            // Permitir escolher a porta via argumento de linha de comando
+            if (args.length > 0) {
+                porta = Integer.parseInt(args[0]);
+            } else {
+                Scanner scanner = new Scanner(System.in);
+                System.out.print("Digite a porta para o receptor (ex: 12345, 12346): ");
+                porta = scanner.nextInt();
+                scanner.close();
+            }
 
-            // For each client
-            while (true)
-            {
-                // Creates a connection
-                Socket conexao = 
-                    pedido.accept(); // Pedido.accept returns a Socket object. Client connection
+            pedido = new ServerSocket(porta);
+            System.out.println("=== RECEPTOR INICIADO ===");
+            System.out.println("[LOG] Servidor rodando na porta: " + pedido.getLocalPort());
+            System.out.println("[LOG] Processadores disponíveis: " + Runtime.getRuntime().availableProcessors());
+            System.out.println("[LOG] Aguardando conexões...\n");
 
-                // Assigns a thread for a connection ( limited threads but infinite connections ) 
+            int numeroConexao = 0;
+
+            while (true) {
+                Socket conexao = pedido.accept();
+                final int idConexao = ++numeroConexao;
+
+                System.out.println("[LOG] Conexão #" + idConexao + " aceita de: " +
+                        conexao.getInetAddress().getHostAddress() + ":" + conexao.getPort());
+
                 connectionPool.submit(() -> {
-                    try {
-                        // Receber / Input
-                        ObjectInputStream receptor =
-                            new ObjectInputStream( // Reads OBJECTS from client
-                            conexao.getInputStream()); // Returns an InputStream object ( Data entering from client ) and converts it from Binary Data to OBJECTS
+                    ObjectInputStream receptor = null;
+                    ObjectOutputStream transmissor = null;
 
-                        // Enviar / Output
-                        ObjectOutputStream transmissor = // Writes OBJECTS to the client
-                            new ObjectOutputStream(
-                            conexao.getOutputStream()); // Gets the output stream from client connection ( Data leaving to client ) and converts OBJECTS to Binary Data
+                    try {
+                        System.out.println("[LOG] Conexão #" + idConexao + " - Inicializando streams...");
+
+                        receptor = new ObjectInputStream(conexao.getInputStream());
+                        transmissor = new ObjectOutputStream(conexao.getOutputStream());
+                        transmissor.flush();
+
+                        System.out.println("[LOG] Conexão #" + idConexao + " - Pronto para receber pedidos");
 
                         Object objeto;
-                        do
-                        {
+                        int numeroPedido = 0;
+
+                        while (true) {
                             objeto = receptor.readObject();
 
-                            if (objeto instanceof Pedido)
-                            {
+                            if (objeto instanceof Pedido) {
+                                numeroPedido++;
                                 Pedido pedidoRecebido = (Pedido) objeto;
 
-                                // Parallel processing
-                                int contagem;
-                                contagem = processarPedidoParalelo(
+                                System.out.println("[LOG] Conexão #" + idConexao + " - Pedido #" + numeroPedido +
+                                        " recebido (tamanho vetor: " + pedidoRecebido.getNumeros().length +
+                                        ", procurado: " + pedidoRecebido.getProcurado() + ")");
+
+                                long inicio = System.currentTimeMillis();
+                                int contagem = processarPedidoParalelo(
                                         pedidoRecebido.getNumeros(),
                                         pedidoRecebido.getProcurado()
-                                    );                     
-                                Resposta resposta = new Resposta(contagem);
+                                );
+                                long fim = System.currentTimeMillis();
 
+                                Resposta resposta = new Resposta(contagem);
                                 transmissor.writeObject(resposta);
                                 transmissor.flush();
 
-                                System.out.println("Processado pedido - contagem: " + contagem);
+                                System.out.println("[LOG] Conexão #" + idConexao + " - Pedido #" + numeroPedido +
+                                        " processado: " + contagem + " ocorrências em " +
+                                        (fim - inicio) + " ms");
                             }
-                            else if (objeto instanceof ComunicadoEncerramento)
-                            {
-                                System.out.println("Recebido ComunicadoEncerramento - encerrando conexão");
+                            else if (objeto instanceof ComunicadoEncerramento) {
+                                System.out.println("[LOG] Conexão #" + idConexao +
+                                        " - ComunicadoEncerramento recebido");
                                 break;
                             }
+                            else {
+                                System.err.println("[ERRO] Conexão #" + idConexao +
+                                        " - Objeto desconhecido recebido: " + objeto.getClass().getName());
+                            }
                         }
-                        while (true);
 
-                        transmissor.close();
-                        receptor.close();
-                        conexao.close();
-                    }
-                    catch (Exception erro)
-                    {
-                        System.err.println(erro.getMessage());
+                        System.out.println("[LOG] Conexão #" + idConexao + " - Encerrando...");
+
+                    } catch (EOFException e) {
+                        System.err.println("[ERRO] Conexão #" + idConexao +
+                                " - Fim inesperado do stream (cliente desconectou?)");
+                    } catch (SocketException e) {
+                        System.err.println("[ERRO] Conexão #" + idConexao +
+                                " - Erro de socket: " + e.getMessage());
+                    } catch (ClassNotFoundException e) {
+                        System.err.println("[ERRO] Conexão #" + idConexao +
+                                " - Classe não encontrada: " + e.getMessage());
+                    } catch (Exception e) {
+                        System.err.println("[ERRO] Conexão #" + idConexao +
+                                " - Exceção não esperada: " + e.getMessage());
+                        e.printStackTrace();
+                    } finally {
+                        // Fechamento seguro dos recursos
+                        try {
+                            if (transmissor != null) {
+                                transmissor.close();
+                                System.out.println("[LOG] Conexão #" + idConexao + " - Transmissor fechado");
+                            }
+                        } catch (IOException e) {
+                            System.err.println("[ERRO] Conexão #" + idConexao +
+                                    " - Erro ao fechar transmissor: " + e.getMessage());
+                        }
+
+                        try {
+                            if (receptor != null) {
+                                receptor.close();
+                                System.out.println("[LOG] Conexão #" + idConexao + " - Receptor fechado");
+                            }
+                        } catch (IOException e) {
+                            System.err.println("[ERRO] Conexão #" + idConexao +
+                                    " - Erro ao fechar receptor: " + e.getMessage());
+                        }
+
+                        try {
+                            if (conexao != null && !conexao.isClosed()) {
+                                conexao.close();
+                                System.out.println("[LOG] Conexão #" + idConexao + " - Socket fechado\n");
+                            }
+                        } catch (IOException e) {
+                            System.err.println("[ERRO] Conexão #" + idConexao +
+                                    " - Erro ao fechar socket: " + e.getMessage());
+                        }
                     }
                 });
             }
-        }
-        catch (Exception erro)
-        {
-            System.err.println(erro.getMessage());
+        } catch (NumberFormatException e) {
+            System.err.println("[ERRO FATAL] Porta inválida fornecida");
+        } catch (IOException e) {
+            System.err.println("[ERRO FATAL] Erro ao criar ServerSocket na porta " + porta + ": " + e.getMessage());
+        } catch (Exception e) {
+            System.err.println("[ERRO FATAL] Exceção no main: " + e.getMessage());
+            e.printStackTrace();
+        } finally {
+            // Encerramento dos pools de threads
+            System.out.println("\n[LOG] Encerrando pools de threads...");
+
+            connectionPool.shutdown();
+            cpuPool.shutdown();
+
+            try {
+                if (!connectionPool.awaitTermination(5, TimeUnit.SECONDS)) {
+                    System.out.println("[AVISO] Forçando encerramento do connectionPool...");
+                    connectionPool.shutdownNow();
+                }
+                if (!cpuPool.awaitTermination(5, TimeUnit.SECONDS)) {
+                    System.out.println("[AVISO] Forçando encerramento do cpuPool...");
+                    cpuPool.shutdownNow();
+                }
+            } catch (InterruptedException e) {
+                connectionPool.shutdownNow();
+                cpuPool.shutdownNow();
+                Thread.currentThread().interrupt();
+            }
+
+            if (pedido != null && !pedido.isClosed()) {
+                try {
+                    pedido.close();
+                    System.out.println("[LOG] ServerSocket fechado");
+                } catch (IOException e) {
+                    System.err.println("[ERRO] Ao fechar ServerSocket: " + e.getMessage());
+                }
+            }
+
+            System.out.println("=== RECEPTOR ENCERRADO ===");
         }
     }
 
-    private static int processarPedidoParalelo(int[] numeros, int procurado) throws InterruptedException, ExecutionException {
-        int numProcessadores = Runtime.getRuntime().availableProcessors();
+    private static int processarPedidoParalelo(byte[] numeros, byte procurado)
+            throws InterruptedException, ExecutionException {
 
+        int numProcessadores = Runtime.getRuntime().availableProcessors();
         int tamanhoArray = numeros.length;
         int tamanhoFatia = tamanhoArray / numProcessadores;
 
-        // Each processed slice from working threads
         List<Future<Integer>> resultados = new ArrayList<>();
 
-        for (int i = 0; i < numProcessadores; i++)
-        {   
-            // Ex: i=0 --> 1 * 333 = 0    -> Server will process 0 to 332
-            // Ex: i=1 --> 1 * 333 = 333  -> Server will process 333 to 665
-            int inicio = i * tamanhoFatia; // This determines the start of the slice, index of each processor multiplied by the size of the slice
+        System.out.println("    [LOG] Processamento paralelo iniciado: " +
+                numProcessadores + " threads, " + tamanhoArray + " elementos");
 
-            // Problem:
-                // Example array of 1000 divided by 3 processors:
-                // Processor 1: 0-333
-                // Processor 2: 334-666
-                // Processor 3: 667-999
-                // To fix this, we use the following condition: If it's the last processor, take the rest of the array, otherwise, take the next slice
-            int fim = (i == numProcessadores - 1) ? tamanhoArray : (i + 1) * tamanhoFatia; 
-            // It works because we divided the array by the number of processors. Multiplying again works
+        for (int i = 0; i < numProcessadores; i++) {
+            int inicio = i * tamanhoFatia;
+            int fim = (i == numProcessadores - 1) ? tamanhoArray : (i + 1) * tamanhoFatia;
+
+            System.out.println("    [LOG] Thread " + i + " processará índices [" + inicio + ", " + fim + ")");
 
             resultados.add(cpuPool.submit(new ContadorTask(numeros, inicio, fim, procurado)));
-        }       
+        }
 
-        // Reunite the results from each thread
         int total = 0;
-        for (Future<Integer> futuro : resultados)
-            total += futuro.get();
+        for (int i = 0; i < resultados.size(); i++) {
+            int parcial = resultados.get(i).get();
+            total += parcial;
+            System.out.println("    [LOG] Thread " + i + " retornou: " + parcial + " ocorrências");
+        }
 
+        System.out.println("    [LOG] Total combinado: " + total + " ocorrências");
         return total;
     }
 
-    // Task that will actually process in each Thread
-    // Extends pedido to use method contar() overridden and Implements Callable<Integer> so that 
-    // ExecutorService can make the thread call a task and return its result with its correct type
-    private static class ContadorTask extends Pedido implements Callable<Integer>
-    {
+    private static class ContadorTask extends Pedido implements Callable<Integer> {
         private final int inicio;
         private final int fim;
 
-        public ContadorTask(int[] numeros, int inicio, int fim, int procurado)
-        {
-            super(numeros, procurado); 
+        public ContadorTask(byte[] numeros, int inicio, int fim, byte procurado) {
+            super(numeros, procurado);
             this.inicio = inicio;
             this.fim = fim;
         }
 
         @Override
-        public int contar()
-        {
+        public int contar() {
             int cont = 0;
-            for (int i = inicio; i < fim; i++)
-                // if (numeros[i] == procurado()) FUCK YOU  JAIME, WHY PRIVATE FIELDS YOU MF, FUCK YOU JAIME >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:(  >:( 
-                if (getNumeros()[i] == getProcurado())
+            byte[] nums = getNumeros();
+            byte proc = getProcurado();
+
+            for (int i = inicio; i < fim; i++) {
+                if (nums[i] == proc) {
                     cont++;
+                }
+            }
             return cont;
         }
 
-        // This will be the method caller that the ExecutorService will call while managing the threads
         @Override
-        public Integer call()
-        {
-            return contar(); // Usa o método contar() sobrescrito
+        public Integer call() {
+            return contar();
         }
     }
-
-    // ao final ira juntar todas e envia rpar ao cliente
 }
