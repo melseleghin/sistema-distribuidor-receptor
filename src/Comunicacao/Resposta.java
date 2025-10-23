@@ -1,4 +1,4 @@
-package src.Receptor;
+package src.Comunicacao;
 
 public class Resposta extends Comunicado {
 
@@ -12,3 +12,5 @@ public class Resposta extends Comunicado {
         return contagem;
     }
 }
+
+

@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.*;
 import java.security.SecureRandom;
 import java.util.*;
+import src.Comunicacao.*;
 
 public class Distribuidor {
 

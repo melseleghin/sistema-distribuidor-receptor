@@ -1,5 +1,7 @@
-package src.Distribuidor;
+package src.Comunicacao;
 
 public class ComunicadoEncerramento extends Comunicado {
 
 }
+
+

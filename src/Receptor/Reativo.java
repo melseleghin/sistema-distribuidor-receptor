@@ -4,6 +4,7 @@ import java.io.*;
 import java.net.*;
 import java.util.*; // adicionada para ExecutorService, Future, Callable, Executors
 import java.util.concurrent.*; // adicionada para List e ArrayList
+import src.Comunicacao.*;
 
 public class Reativo
 {
