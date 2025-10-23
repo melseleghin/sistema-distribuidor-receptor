@@ -1,4 +1,4 @@
-package src.Distribuidor;
+package src.Comunicacao;
 
 public class Resposta extends Comunicado {
 
@@ -8,7 +8,9 @@ public class Resposta extends Comunicado {
         this.contagem = contagem;
     }
 
-    private int getContagem() {
+    public int getContagem() {
         return contagem;
     }
 }
+
+

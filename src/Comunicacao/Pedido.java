@@ -1,4 +1,4 @@
-package src.Receptor;
+package src.Comunicacao;
 
 public class Pedido extends Comunicado {
     private final int[] numeros;
@@ -17,7 +17,6 @@ public class Pedido extends Comunicado {
         return procurado;
     }
 
-    // percorre o vetor e retorna quantas vezes procurado aparece
     public int contar() {
         int cont = 0;
         for (int n : numeros) {
@@ -26,4 +25,5 @@ public class Pedido extends Comunicado {
         return cont;
     }
 }
+
 
