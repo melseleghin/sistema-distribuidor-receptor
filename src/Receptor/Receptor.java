@@ -6,7 +6,7 @@ import java.util.*; // adicionada para ExecutorService, Future, Callable, Execut
 import java.util.concurrent.*; // adicionada para List e ArrayList
 import src.Comunicacao.*;
 
-public class Reativo
+public class Receptor
 {
 
     // private -> only this class can access (private, public)
