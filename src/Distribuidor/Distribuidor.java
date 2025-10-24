@@ -86,8 +86,8 @@ public class Distribuidor {
 
             // IPs e portas hard coded
             String[] servidores = {
-                    "192.168.0.10:12345",
-                    "192.168.0.10:12346"
+                    "localhost:12345",
+                    "localhost:12346"
             };
 
             // Criação das conexões persistentes
@@ -164,10 +164,13 @@ public class Distribuidor {
 
             // Contagem local (sequencial para validação)
             System.out.println("[LOG] Realizando contagem local para validação...");
+            long inicioLocal = System.currentTimeMillis();
             int local = 0;
             for (byte n : vetor) {
                 if (n == procurado) local++;
             }
+            long fimLocal = System.currentTimeMillis();
+            System.out.println("[RESULTADO] Contagem local (checagem) = " + local + " em " + (fimLocal - inicioLocal) + " ms");
             System.out.println("[RESULTADO] Contagem local (checagem) = " + local);
 
             if (total == local) {
