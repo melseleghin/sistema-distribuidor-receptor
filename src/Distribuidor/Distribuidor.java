@@ -47,8 +47,8 @@ public class Distribuidor {
 
             // IPs e portas hard coded
             String[] servidores = {
-                "172.16.255.255:12345",
-                "172.20.10.5:12345"
+                "192.168.246.255:12345",
+                "192.168.246.255:12346"
             };
 
             // Criação das conexões persistentes
